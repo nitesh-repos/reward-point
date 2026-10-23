@@ -13,3 +13,7 @@ type RewardRequest struct {
 	Points      int                `json:"points"`
 	Description string             `json:"description"`
 }
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
