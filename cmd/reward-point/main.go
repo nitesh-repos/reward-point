@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reward-points/internal/database"
 	"reward-points/internal/server"
 	"syscall"
 	"time"
@@ -19,7 +20,7 @@ func main() {
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	serv := server.New(cfg, logger)
+	serv := server.New(cfg, logger, database.NewLocalStorage())
 
 	signalChan := make(chan os.Signal, 1)
 	defer signal.Stop(signalChan)

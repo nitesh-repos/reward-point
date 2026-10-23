@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reward-points/internal/database"
 )
 
 type Config struct {
@@ -15,11 +16,13 @@ type Config struct {
 type Server struct {
 	httpServer *http.Server
 	logger     *slog.Logger
+	store      database.Store
 }
 
-func New(cfg Config, logger *slog.Logger) *Server {
+func New(cfg Config, logger *slog.Logger, store database.Store) *Server {
 	serv := &Server{
 		logger: logger,
+		store:  store,
 	}
 	mux := http.NewServeMux()
 
