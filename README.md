@@ -28,16 +28,16 @@ logging, and an in-memory store with no external dependencies.
 - **Go 1.26+** to run locally, **or**
 - **Docker** with Docker Compose
 
-### Run with Docker Compose
+### Run in docker
 
 ```bash
-docker compose up --build
+make docker-up
 ```
 
 ### Run locally
 
 ```bash
-go run ./cmd/reward-point
+make run
 ```
 
 Either way, the service listens on **`http://localhost:8080`**.
@@ -122,7 +122,7 @@ Creates a member account. The service sets `member_id` and `created_at`.
 }
 ```
 
-**Response `200 OK`**
+**Response `201 Created`**
 
 ```json
 {
@@ -165,7 +165,7 @@ Creates a reward entry for a member. The service sets `reward_id` and
 }
 ```
 
-**Response `200 OK`**
+**Response `201 Created`**
 
 ```json
 {
@@ -211,11 +211,15 @@ member with no entries gets an empty array `[]`.
 
 ### Status codes
 
-| Status | When                                                              |
-|--------|-------------------------------------------------------------------|
-| 200    | Success                                                           |
-| 400    | Request body is not valid JSON, or `{id}` in the path is not a number |
-| 500    | The store rejected the request (see [Validation rules](#validation-rules)) |
+| Status | When                                                                          |
+|--------|-------------------------------------------------------------------------------|
+| 200    | Success (GET requests)                                                        |
+| 201    | Resource created (`POST /members`, `POST /rewards`)                          |
+| 400    | Request body is not valid JSON, or `{id}` in the path is not a number         |
+| 404    | Member does not exist (`ErrMemberNotFound`)                                   |
+| 409    | Email is already registered (`ErrDuplicateEmail`)                             |
+| 422    | Invalid point type, non-positive points, or insufficient balance for redemption (`ErrInvalidPointType`, `ErrNegativePoints`, `ErrInsufficientPoints`) |
+| 500    | Internal server error                                                       |
 
 ---
 
@@ -262,11 +266,11 @@ enforces these rules. Each has its own exported error.
 Run the unit test using:
 
 ```bash
-go test -v ./...
+make test
 ```
 
-With coverage:
+Test coverage:
 
 ```bash
-go test -cover ./...
+make cover
 ```
