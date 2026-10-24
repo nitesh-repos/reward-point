@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 	"reward-points/internal/models"
+	"strings"
 	"sync"
 	"time"
 )
@@ -12,6 +13,7 @@ var (
 	ErrInsufficientPoints = errors.New("insufficient points")
 	ErrNegativePoints     = errors.New("negative points passed")
 	ErrInvalidPointType   = errors.New("invalid point type")
+	ErrDuplicateEmail     = errors.New("email id already taken")
 )
 
 type Store interface {
@@ -24,6 +26,7 @@ type Store interface {
 type LocalStorage struct {
 	members      map[int]models.MemberInfo
 	rewards      map[int][]models.Reward
+	emailIndex   map[string]int
 	mu           sync.RWMutex
 	lastMemberID int
 	lastRewardID int
@@ -31,8 +34,9 @@ type LocalStorage struct {
 
 func NewLocalStorage() *LocalStorage {
 	return &LocalStorage{
-		members: make(map[int]models.MemberInfo),
-		rewards: make(map[int][]models.Reward),
+		members:    make(map[int]models.MemberInfo),
+		rewards:    make(map[int][]models.Reward),
+		emailIndex: make(map[string]int),
 	}
 }
 
@@ -40,12 +44,18 @@ func (conn *LocalStorage) CreateMember(m models.Member) (models.Member, error) {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
+	emailID := strings.ToLower(strings.TrimSpace(m.Email))
+	if _, exists := conn.emailIndex[emailID]; exists {
+		return models.Member{}, ErrDuplicateEmail
+	}
+
 	m.MemberID = conn.lastMemberID + 1
 	m.CreatedAt = time.Now().UTC()
 
 	conn.lastMemberID = m.MemberID
 	conn.members[m.MemberID] = models.MemberInfo{Member: m}
 	conn.rewards[m.MemberID] = make([]models.Reward, 0)
+	conn.emailIndex[emailID] = m.MemberID
 
 	return m, nil
 }
