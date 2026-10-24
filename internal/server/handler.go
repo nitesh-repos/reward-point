@@ -36,7 +36,7 @@ func (serv *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	serv.logger.Info("member created", "id", member.MemberID)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(member)
 
 }
@@ -79,7 +79,7 @@ func (serv *Server) handleCreateRewards(w http.ResponseWriter, r *http.Request) 
 	}
 
 	serv.logger.Info("member reward created", "id", reward.RewardID)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(reward)
 }
 
