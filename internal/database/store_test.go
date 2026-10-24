@@ -6,6 +6,19 @@ import (
 	"testing"
 )
 
+func TestCreateMember(t *testing.T) {
+	s := NewLocalStorage()
+	_, err := s.CreateMember(models.Member{Name: "abc", Email: "abc@xyz.com"})
+	if err != nil {
+		t.Fatalf("err %v, wanted nil", err)
+	}
+
+	_, err = s.CreateMember(models.Member{Name: "bcd", Email: "abc@xyz.com"})
+	if !errors.Is(err, ErrDuplicateEmail) {
+		t.Errorf("err = %v, wanted %v", err, ErrDuplicateEmail)
+	}
+}
+
 func TestGetMember(t *testing.T) {
 	s := NewLocalStorage()
 	m, err := s.CreateMember(models.Member{Name: "abc", Email: "abc@xyz.com"})
