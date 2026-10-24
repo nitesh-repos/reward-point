@@ -1,0 +1,11 @@
+services:
+  reward-point:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: reward-point:latest
+    container_name: reward-point
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    stop_grace_period: 15s   # longer than the 10s shutdown timeout in main.go

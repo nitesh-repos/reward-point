@@ -15,7 +15,7 @@ import (
 
 func main() {
 	cfg := server.Config{
-		Host: "localhost",
+		Host: "0.0.0.0",
 		Port: 8080,
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
