@@ -2,8 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"reward-points/internal/database"
 	"reward-points/internal/models"
 	"strconv"
 )
@@ -15,13 +17,12 @@ func (serv *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /members/{id}/rewards", serv.handleGetMemberRewards)
 }
 
+var ErrBadRequest = errors.New("bad request")
+
 func (serv *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) {
 	var mr MemberRequest
 	if err := json.NewDecoder(r.Body).Decode(&mr); err != nil {
-		serv.logger.Error("could not decode payload", "error", err)
-
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid JSON body"})
+		serv.writeError(w, fmt.Errorf("invalid JSON body: %w", ErrBadRequest))
 		return
 	}
 
@@ -30,10 +31,7 @@ func (serv *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) {
 		Email: mr.Email,
 	})
 	if err != nil {
-		serv.logger.Error("create member failed", "error", err)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "could not create member"})
+		serv.writeError(w, err)
 		return
 	}
 
@@ -47,19 +45,13 @@ func (serv *Server) handleGetMember(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		serv.logger.Error("invalid member id", "id", idStr)
-
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid member id in path parameter"})
+		serv.writeError(w, fmt.Errorf("invalid member id \"%s\" in path: %w", idStr, ErrBadRequest))
 		return
 	}
 
 	memberInfo, err := serv.store.GetMember(id)
 	if err != nil {
-		serv.logger.Error("member fetch error", "error", err)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("could not fetch member for id %d", id)})
+		serv.writeError(w, err)
 		return
 	}
 
@@ -71,10 +63,7 @@ func (serv *Server) handleGetMember(w http.ResponseWriter, r *http.Request) {
 func (serv *Server) handleCreateRewards(w http.ResponseWriter, r *http.Request) {
 	var rr RewardRequest
 	if err := json.NewDecoder(r.Body).Decode(&rr); err != nil {
-		serv.logger.Error("could not decode payload", "error", err)
-
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid JSON body"})
+		serv.writeError(w, fmt.Errorf("invalid JSON body: %w", ErrBadRequest))
 		return
 	}
 
@@ -85,10 +74,7 @@ func (serv *Server) handleCreateRewards(w http.ResponseWriter, r *http.Request) 
 		Description: rr.Description,
 	})
 	if err != nil {
-		serv.logger.Error("create member reward failed", "error", err)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "could not create member reward"})
+		serv.writeError(w, err)
 		return
 	}
 
@@ -101,23 +87,41 @@ func (serv *Server) handleGetMemberRewards(w http.ResponseWriter, r *http.Reques
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		serv.logger.Error("invalid member id", "id", idStr)
-
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid member id in path parameter"})
+		serv.writeError(w, fmt.Errorf("invalid member id \"%s\" in path: %w", idStr, ErrBadRequest))
 		return
 	}
 
 	rewards, err := serv.store.GetMemberReward(id)
 	if err != nil {
-		serv.logger.Error("member rewards fetch error", "error", err)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("could not fetch member rewards for id %d", id)})
+		serv.writeError(w, err)
 		return
 	}
 
 	serv.logger.Info("member rewards fetched successfully", "id", id)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(rewards)
+}
+
+func (serv *Server) writeError(w http.ResponseWriter, err error) {
+	status, msg := http.StatusInternalServerError, "internal server error"
+
+	switch {
+	case errors.Is(err, ErrBadRequest):
+		status, msg = http.StatusBadRequest, err.Error()
+	case errors.Is(err, database.ErrNotFound):
+		status, msg = http.StatusNotFound, err.Error()
+	case errors.Is(err, database.ErrConflict):
+		status, msg = http.StatusConflict, err.Error()
+	case errors.Is(err, database.ErrInvalid):
+		status, msg = http.StatusUnprocessableEntity, err.Error()
+	}
+
+	if status >= 500 {
+		serv.logger.Error("request failed", "status", status, "error", err)
+	} else {
+		serv.logger.Warn("request rejected", "status", status, "error", err)
+	}
+
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{Error: msg})
 }

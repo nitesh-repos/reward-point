@@ -1,19 +1,10 @@
 package database
 
 import (
-	"errors"
 	"reward-points/internal/models"
 	"strings"
 	"sync"
 	"time"
-)
-
-var (
-	ErrMemberNotFound     = errors.New("member not found")
-	ErrInsufficientPoints = errors.New("insufficient points")
-	ErrNegativePoints     = errors.New("negative points passed")
-	ErrInvalidPointType   = errors.New("invalid point type")
-	ErrDuplicateEmail     = errors.New("email id already taken")
 )
 
 type Store interface {
